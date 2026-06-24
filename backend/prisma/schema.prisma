@@ -1,0 +1,259 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ─────────────────────────────────────────────
+
+enum ProficiencyLevel {
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+}
+
+enum UserSkillType {
+  TEACH
+  LEARN
+}
+
+enum SessionStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+// ─── MODELS ────────────────────────────────────────────
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  name              String
+  university        String
+  bio               String?  @default("")
+  profilePhotoUrl   String?  @map("profile_photo_url")
+  location          String?
+  availability      Json?    @default("{}")
+  phone             String?
+  emailVerified     Boolean  @default(false) @map("email_verified")
+  phoneVerified     Boolean  @default(false) @map("phone_verified")
+  emailVerifyToken  String?  @map("email_verify_token")
+  trustScore        Float    @default(50.0) @map("trust_score")
+  totalPoints       Int      @default(0) @map("total_points")
+  role              UserRole @default(STUDENT)
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  userSkills        UserSkill[]
+  teachingSessions  Session[]       @relation("TeacherSessions")
+  learningSessions  Session[]       @relation("StudentSessions")
+  reviewsWritten    Review[]        @relation("ReviewsWritten")
+  reviewsReceived   Review[]        @relation("ReviewsReceived")
+  trustHistory      TrustHistory[]
+  userBadges        UserBadge[]
+  notifications     Notification[]
+  refreshTokens     RefreshToken[]
+
+  @@map("users")
+}
+
+model SkillCategory {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  icon       String   @default("📚")
+  color      String   @default("#3b82f6")
+  skillCount Int      @default(0) @map("skill_count")
+
+  // Relations
+  skills     Skill[]
+
+  @@map("skill_categories")
+}
+
+model Skill {
+  id           Int      @id @default(autoincrement())
+  name         String
+  categoryId   Int      @map("category_id")
+  description  String?  @default("")
+  tags         String[] @default([])
+  listingCount Int      @default(0) @map("listing_count")
+  isTrending   Boolean  @default(false) @map("is_trending")
+
+  // Relations
+  category     SkillCategory @relation(fields: [categoryId], references: [id])
+  userSkills   UserSkill[]
+  sessions     Session[]
+
+  @@unique([name, categoryId])
+  @@map("skills")
+}
+
+model UserSkill {
+  id                String           @id @default(uuid()) @db.Uuid
+  userId            String           @map("user_id") @db.Uuid
+  skillId           Int              @map("skill_id")
+  proficiencyLevel  ProficiencyLevel @default(BEGINNER) @map("proficiency_level")
+  description       String?          @default("")
+  type              UserSkillType
+  preferredDuration Int              @default(60) @map("preferred_duration")
+  avgRating         Float            @default(0.0) @map("avg_rating")
+  reviewCount       Int              @default(0) @map("review_count")
+  sessionCount      Int              @default(0) @map("session_count")
+  isActive          Boolean          @default(true) @map("is_active")
+
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill             Skill            @relation(fields: [skillId], references: [id])
+  sessions          Session[]
+
+  @@unique([userId, skillId, type])
+  @@map("user_skills")
+}
+
+model Session {
+  id                String        @id @default(uuid()) @db.Uuid
+  teacherId         String        @map("teacher_id") @db.Uuid
+  studentId         String        @map("student_id") @db.Uuid
+  skillId           Int           @map("skill_id")
+  userSkillId       String?       @map("user_skill_id") @db.Uuid
+  status            SessionStatus @default(PENDING)
+  scheduledAt       DateTime      @map("scheduled_at")
+  durationMinutes   Int           @map("duration_minutes")
+  topic             String?
+  message           String?
+  meetingLink       String?       @map("meeting_link")
+  teacherConfirmed  Boolean       @default(false) @map("teacher_confirmed")
+  studentConfirmed  Boolean       @default(false) @map("student_confirmed")
+  completedAt       DateTime?     @map("completed_at")
+  cancelledAt       DateTime?     @map("cancelled_at")
+  cancelReason      String?       @map("cancel_reason")
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  teacher           User          @relation("TeacherSessions", fields: [teacherId], references: [id])
+  student           User          @relation("StudentSessions", fields: [studentId], references: [id])
+  skill             Skill         @relation(fields: [skillId], references: [id])
+  userSkill         UserSkill?    @relation(fields: [userSkillId], references: [id])
+  reviews           Review[]
+
+  @@map("sessions")
+}
+
+model Review {
+  id              String    @id @default(uuid()) @db.Uuid
+  sessionId       String    @map("session_id") @db.Uuid
+  reviewerId      String    @map("reviewer_id") @db.Uuid
+  revieweeId      String    @map("reviewee_id") @db.Uuid
+  overallRating   Int       @map("overall_rating")
+  comment         String?
+  isPublic        Boolean   @default(false) @map("is_public")
+  publishedAt     DateTime? @map("published_at")
+  reply           String?
+  repliedAt       DateTime? @map("replied_at")
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  session         Session   @relation(fields: [sessionId], references: [id])
+  reviewer        User      @relation("ReviewsWritten", fields: [reviewerId], references: [id])
+  reviewee        User      @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+
+  @@unique([sessionId, reviewerId])
+  @@map("reviews")
+}
+
+model TrustHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  scoreChange   Float    @map("score_change")
+  newScore      Float    @map("new_score")
+  reason        String
+  referenceId   String?  @map("reference_id") @db.Uuid
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("trust_history")
+}
+
+model Badge {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String
+  icon        String
+  category    String
+  criteria    Json?
+
+  // Relations
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  badgeId   Int      @map("badge_id")
+  earnedAt  DateTime @default(now()) @map("earned_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean  @default(false) @map("is_read")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  isRevoked Boolean  @default(false) @map("is_revoked")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}

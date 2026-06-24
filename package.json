@@ -1,0 +1,19 @@
+{
+  "name": "campus-skill-exchange",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Peer-to-peer skill exchange platform for university students",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "db:migrate": "cd backend && npx prisma migrate dev",
+    "db:seed": "cd backend && node prisma/seed.js",
+    "db:studio": "cd backend && npx prisma studio",
+    "build": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
