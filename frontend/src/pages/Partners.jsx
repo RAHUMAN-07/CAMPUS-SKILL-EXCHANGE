@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BiBuilding, BiCheckCircle, BiTrendingUp, BiUsers, BiStar, BiMail } from 'react-icons/bi';
+import { BiBuilding, BiCheckCircle, BiTrendingUp, BiUsers, BiStar } from 'react-icons/bi';
 
 export default function Partners({ darkMode }) {
   const [formData, setFormData] = useState({
