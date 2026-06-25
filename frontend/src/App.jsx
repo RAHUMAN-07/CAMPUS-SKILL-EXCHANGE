@@ -14,6 +14,7 @@ import {
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState(null);
 
   const sampleSkills = [
     { id: 1, name: 'React & Frontend development', category: 'Software Development', provider: 'Alex Rivera', rating: 4.9, sessions: 24, tags: ['React', 'JavaScript', 'CSS'] },
@@ -28,6 +29,23 @@ export default function App() {
     { label: 'Completed Sessions', value: '3,200+', icon: <BiCalendar /> },
     { label: 'Verified Badges', value: '450+', icon: <BiBadgeCheck /> },
   ];
+
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleViewAllSkills = (event) => {
+    event.preventDefault();
+    scrollToSection('skills-section');
+  };
+
+  const handleSkillCardClick = (skill) => {
+    setSelectedSkill(skill);
+    scrollToSection('skill-detail');
+  };
 
   return (
     <div style={{
@@ -99,17 +117,20 @@ export default function App() {
             {darkMode ? <BiSun /> : <BiMoon />}
           </button>
           
-          <button style={{
-            backgroundColor: '#1e3a5f',
-            color: '#ffffff',
-            border: 'none',
-            padding: '0.625rem 1.25rem',
-            borderRadius: '8px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(30, 58, 95, 0.15)',
-            transition: 'transform var(--transition-fast)'
-          }}>
+          <button
+            onClick={() => scrollToSection('skills-section')}
+            style={{
+              backgroundColor: '#1e3a5f',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.625rem 1.25rem',
+              borderRadius: '8px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(30, 58, 95, 0.15)',
+              transition: 'transform var(--transition-fast)'
+            }}
+          >
             Launch App
           </button>
         </div>
@@ -229,12 +250,15 @@ export default function App() {
       </section>
 
       {/* Featured Skills / Cards */}
-      <section style={{
-        padding: '5rem 2rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%'
-      }}>
+      <section
+        id="skills-section"
+        style={{
+          padding: '5rem 2rem',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          width: '100%'
+        }}
+      >
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -245,14 +269,19 @@ export default function App() {
             <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Explore Skills</h3>
             <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.25rem' }}>Discover what fellow students are teaching on campus.</p>
           </div>
-          <a href="#" style={{
-            display: 'flex',
-            alignItems: 'center',
-            color: '#d4a843',
-            textDecoration: 'none',
-            fontWeight: '600',
-            fontSize: '0.95rem'
-          }}>
+          <a
+            href="#skills-section"
+            onClick={handleViewAllSkills}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: '#d4a843',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '0.95rem',
+              cursor: 'pointer'
+            }}
+          >
             View All Skills <BiChevronRight />
           </a>
         </div>
@@ -268,6 +297,7 @@ export default function App() {
               <div 
                 key={skill.id} 
                 className="glass-card"
+                onClick={() => handleSkillCardClick(skill)}
                 style={{
                   padding: '1.75rem',
                   display: 'flex',
@@ -344,6 +374,54 @@ export default function App() {
             ))}
         </div>
       </section>
+
+      {selectedSkill && (
+        <section
+          id="skill-detail"
+          style={{
+            padding: '2rem',
+            maxWidth: '1100px',
+            margin: '0 auto',
+            borderTop: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+            backgroundColor: darkMode ? '#0f1729' : '#ffffff'
+          }}
+        >
+          <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
+            Selected Skill Details
+          </h3>
+          <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.5rem' }}>
+            You selected <strong>{selectedSkill.name}</strong> from {selectedSkill.provider}. Use the skill card to explore more and connect with peers.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem' }}>
+            {selectedSkill.tags.map((tag, idx) => (
+              <span key={idx} style={{
+                backgroundColor: darkMode ? '#1e293b' : '#f1f5f9',
+                color: darkMode ? '#d4d4d8' : '#0f172a',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.9rem'
+              }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+          <button
+            onClick={() => setSelectedSkill(null)}
+            style={{
+              marginTop: '1.75rem',
+              backgroundColor: '#1e3a5f',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.9rem 1.5rem',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            Clear Selection
+          </button>
+        </section>
+      )}
 
       {/* Footer */}
       <footer style={{
