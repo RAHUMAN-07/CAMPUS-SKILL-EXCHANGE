@@ -10,11 +10,13 @@ import {
   BiMoon, 
   BiSun 
 } from 'react-icons/bi';
+import Partners from './pages/Partners';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(null);
+  const [currentPage, setCurrentPage] = useState('home');
 
   const sampleSkills = [
     { id: 1, name: 'React & Frontend development', category: 'Software Development', provider: 'Alex Rivera', rating: 4.9, sessions: 24, tags: ['React', 'JavaScript', 'CSS'] },
@@ -46,6 +48,87 @@ export default function App() {
     setSelectedSkill(skill);
     scrollToSection('skill-detail');
   };
+
+  // If Partners page is selected, render it instead
+  if (currentPage === 'partners') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: darkMode ? '#0a0f1a' : '#f8fafc',
+      }}>
+        {/* Header */}
+        <header style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '1.25rem 2rem',
+          borderBottom: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+          backgroundColor: darkMode ? 'rgba(10, 15, 26, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50
+        }}>
+          <button
+            onClick={() => setCurrentPage('home')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0
+            }}
+          >
+            <div style={{
+              width: '2.5rem',
+              height: '2.5rem',
+              borderRadius: '50%',
+              backgroundColor: '#1e3a5f',
+              color: '#d4a843',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+              fontWeight: 'bold'
+            }}>
+              🎓
+            </div>
+            <div>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.025em', color: darkMode ? '#ffffff' : '#1e3a5f', margin: 0 }}>
+                CAMPUS<span style={{ color: '#d4a843' }}>SKILL</span>
+              </h1>
+            </div>
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: darkMode ? '#f0d78c' : '#1e3a5f',
+                fontSize: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.5rem',
+                borderRadius: '50%',
+                backgroundColor: darkMode ? '#1e293b' : '#f1f5f9'
+              }}
+            >
+              {darkMode ? <BiSun /> : <BiMoon />}
+            </button>
+          </div>
+        </header>
+        <Partners darkMode={darkMode} />
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -97,6 +180,22 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <button
+            onClick={() => setCurrentPage('partners')}
+            style={{
+              backgroundColor: '#d4a843',
+              color: '#1e3a5f',
+              border: 'none',
+              padding: '0.625rem 1.25rem',
+              borderRadius: '8px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              marginRight: '0.5rem'
+            }}
+          >
+            For Partners
+          </button>
           <button 
             onClick={() => setDarkMode(!darkMode)}
             style={{
