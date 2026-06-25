@@ -1,6 +1,10 @@
 import env from './env.js';
 
-const allowedOrigins = [env.FRONTEND_URL, 'http://localhost:5173'];
+const allowedOrigins = [
+  env.FRONTEND_URL,
+  'http://localhost:5173',
+  'https://campus-skill-exchange-one.vercel.app',
+];
 
 export const corsOptions = {
   origin: (origin, callback) => {
