@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BiBuilding, BiCheckCircle, BiTrendingUp, BiUsers, BiStar } from 'react-icons/bi';
+import { BiBuilding, BiCheckCircle, BiTrendingUp, BiStar, BiUser } from 'react-icons/bi';
 
 export default function Partners({ darkMode }) {
   const [formData, setFormData] = useState({
@@ -40,7 +40,7 @@ export default function Partners({ darkMode }) {
 
   const benefits = [
     {
-      icon: <BiUsers />,
+      icon: <BiUser />,
       title: 'Access Certified Talent',
       description: 'Connect with verified students who have demonstrated expertise in your required skills.'
     },
