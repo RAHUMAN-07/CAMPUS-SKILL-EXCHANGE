@@ -15,9 +15,11 @@ export default function Partners({ darkMode }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [skills, setSkills] = useState([]);
   const [skillLoading, setSkillLoading] = useState(false);
+  const [skillError, setSkillError] = useState(null);
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [matchedTeachers, setMatchedTeachers] = useState([]);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [matchError, setMatchError] = useState(null);
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -28,6 +30,7 @@ export default function Partners({ darkMode }) {
 
   const fetchSkills = async (query = '') => {
     setSkillLoading(true);
+    setSkillError(null);
     try {
       const response = await api.get('/skills/search', {
         params: { query, page: 1, limit: 12 }
@@ -36,6 +39,7 @@ export default function Partners({ darkMode }) {
     } catch (error) {
       console.error('Skill load failed', error);
       setSkills([]);
+      setSkillError(error.response?.data?.error || error.message || 'Unable to load skills.');
     } finally {
       setSkillLoading(false);
     }
@@ -43,6 +47,7 @@ export default function Partners({ darkMode }) {
 
   const fetchMatchForSkill = async (skillId) => {
     setMatchLoading(true);
+    setMatchError(null);
     try {
       const response = await api.get('/match/search', {
         params: { skillId, page: 1, limit: 6 }
@@ -51,6 +56,7 @@ export default function Partners({ darkMode }) {
     } catch (error) {
       console.error('Match load failed', error);
       setMatchedTeachers([]);
+      setMatchError(error.response?.data?.error || error.message || 'Unable to load teacher matches.');
     } finally {
       setMatchLoading(false);
     }
@@ -303,6 +309,8 @@ export default function Partners({ darkMode }) {
           }}>
             {skillLoading ? (
               <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>Loading skills...</div>
+            ) : skillError ? (
+              <div style={{ color: '#fca5a5' }}>Error: {skillError}</div>
             ) : skills.length === 0 ? (
               <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>No skills found for this query.</div>
             ) : skills.map((skill) => (
@@ -357,6 +365,8 @@ export default function Partners({ darkMode }) {
 
               {matchLoading ? (
                 <div style={{ marginTop: '1.5rem', color: darkMode ? '#cbd5e1' : '#475569' }}>Finding top instructors...</div>
+              ) : matchError ? (
+                <div style={{ marginTop: '1.5rem', color: '#fca5a5' }}>Error: {matchError}</div>
               ) : matchedTeachers.length === 0 ? (
                 <div style={{ marginTop: '1.5rem', color: darkMode ? '#cbd5e1' : '#475569' }}>No instructors available for this skill right now.</div>
               ) : (
