@@ -35,17 +35,25 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        // Try to obtain a new access token using the refresh token (sent automatically via cookie)
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
-        const { accessToken } = response.data;
-        
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) throw new Error('No refresh token available');
+
+        const response = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken },
+          { withCredentials: true }
+        );
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+
         localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
+
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh token is expired/invalid, clear auth state
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         window.dispatchEvent(new Event('auth_session_expired'));
         return Promise.reject(refreshError);
       }

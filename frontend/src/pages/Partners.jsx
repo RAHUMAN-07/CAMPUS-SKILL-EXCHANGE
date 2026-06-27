@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { BiBuilding, BiCheckCircle, BiTrendingUp, BiStar, BiUser } from 'react-icons/bi';
+import React, { useEffect, useState } from 'react';
+import { BiBuilding, BiCheckCircle, BiTrendingUp, BiStar, BiUser, BiSearch, BiChevronRight } from 'react-icons/bi';
+import api from '../services/api';
 
 export default function Partners({ darkMode }) {
   const [formData, setFormData] = useState({
@@ -11,6 +12,12 @@ export default function Partners({ darkMode }) {
     phone: '',
     message: ''
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [skills, setSkills] = useState([]);
+  const [skillLoading, setSkillLoading] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState(null);
+  const [matchedTeachers, setMatchedTeachers] = useState([]);
+  const [matchLoading, setMatchLoading] = useState(false);
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -18,6 +25,53 @@ export default function Partners({ darkMode }) {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const fetchSkills = async (query = '') => {
+    setSkillLoading(true);
+    try {
+      const response = await api.get('/skills/search', {
+        params: { query, page: 1, limit: 12 }
+      });
+      setSkills(response.data.skills || []);
+    } catch (error) {
+      console.error('Skill load failed', error);
+      setSkills([]);
+    } finally {
+      setSkillLoading(false);
+    }
+  };
+
+  const fetchMatchForSkill = async (skillId) => {
+    setMatchLoading(true);
+    try {
+      const response = await api.get('/match/search', {
+        params: { skillId, page: 1, limit: 6 }
+      });
+      setMatchedTeachers(response.data.results || []);
+    } catch (error) {
+      console.error('Match load failed', error);
+      setMatchedTeachers([]);
+    } finally {
+      setMatchLoading(false);
+    }
+  };
+
+  const handleSkillClick = (skill) => {
+    setSelectedSkill(skill);
+    setMatchedTeachers([]);
+    if (skill.id) fetchMatchForSkill(skill.id);
+  };
+
+  useEffect(() => {
+    fetchSkills();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchSkills(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -175,6 +229,198 @@ export default function Partners({ darkMode }) {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Talent Preview Section */}
+      <section style={{
+        padding: '5rem 2rem',
+        backgroundColor: darkMode ? '#0b1120' : '#ffffff'
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '2rem',
+            alignItems: 'flex-end',
+            flexWrap: 'wrap'
+          }}>
+            <div>
+              <h2 style={{
+                fontSize: '2rem',
+                fontWeight: 800,
+                color: darkMode ? '#ffffff' : '#1e3a5f',
+                marginBottom: '0.75rem'
+              }}>
+                Preview Campus Talent
+              </h2>
+              <p style={{
+                color: darkMode ? '#94a3b8' : '#64748b',
+                maxWidth: '620px',
+                lineHeight: '1.8'
+              }}>
+                Search the most in-demand skills and review top matched student instructors available for campus-based collaboration.
+              </p>
+            </div>
+            <div style={{
+              flex: '1 1 360px',
+              minWidth: '280px'
+            }}>
+              <div style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <BiSearch style={{ position: 'absolute', left: '1rem', color: '#94a3b8', fontSize: '1.2rem' }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search skills or role keywords"
+                  style={{
+                    width: '100%',
+                    padding: '1rem 1rem 1rem 3rem',
+                    borderRadius: '999px',
+                    border: '1px solid rgba(148, 163, 184, 0.35)',
+                    backgroundColor: darkMode ? '#111827' : '#f8fafc',
+                    color: darkMode ? '#ffffff' : '#0f172a',
+                    fontSize: '1rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: '2rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1.5rem'
+          }}>
+            {skillLoading ? (
+              <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>Loading skills...</div>
+            ) : skills.length === 0 ? (
+              <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>No skills found for this query.</div>
+            ) : skills.map((skill) => (
+              <button
+                key={skill.id}
+                type="button"
+                onClick={() => handleSkillClick(skill)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '1.5rem',
+                  borderRadius: '18px',
+                  backgroundColor: darkMode ? '#111827' : '#f8fafc',
+                  border: selectedSkill?.id === skill.id ? '2px solid #d4a843' : '1px solid rgba(148, 163, 184, 0.25)',
+                  color: darkMode ? '#ffffff' : '#0f172a',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#d4a843', marginBottom: '0.75rem' }}>
+                  {skill.category?.name || 'General'}
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.5rem' }}>{skill.name}</h3>
+                <p style={{ color: darkMode ? '#cbd5e1' : '#475569', marginBottom: '0.75rem' }}>
+                  {skill._count?.userSkills ?? 0} instructors available
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: darkMode ? '#94a3b8' : '#64748b' }}>
+                  <span style={{ fontSize: '0.85rem' }}>Matched teaching partners</span>
+                  <BiChevronRight />
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {selectedSkill && (
+            <section style={{
+              marginTop: '3rem',
+              padding: '2rem',
+              borderRadius: '24px',
+              backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+              border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
+                    Best Matches for {selectedSkill.name}
+                  </h3>
+                  <p style={{ color: darkMode ? '#94a3b8' : '#64748b', maxWidth: '760px', lineHeight: '1.75' }}>
+                    Review the top peer instructors matched by skill, rating, and campus activity. Click a profile to preview their match score and availability.
+                  </p>
+                </div>
+              </div>
+
+              {matchLoading ? (
+                <div style={{ marginTop: '1.5rem', color: darkMode ? '#cbd5e1' : '#475569' }}>Finding top instructors...</div>
+              ) : matchedTeachers.length === 0 ? (
+                <div style={{ marginTop: '1.5rem', color: darkMode ? '#cbd5e1' : '#475569' }}>No instructors available for this skill right now.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: '1.25rem', marginTop: '1.5rem' }}>
+                  {matchedTeachers.map((teacher) => (
+                    <div key={teacher.id} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      gap: '1rem',
+                      alignItems: 'center',
+                      padding: '1.5rem',
+                      borderRadius: '20px',
+                      backgroundColor: darkMode ? '#111827' : '#f8fafc',
+                      border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`
+                    }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{
+                            width: '3rem',
+                            height: '3rem',
+                            borderRadius: '50%',
+                            backgroundColor: '#1e3a5f',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '1rem'
+                          }}>
+                            {teacher.user.name[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '1rem', fontWeight: 700, color: darkMode ? '#ffffff' : '#1e3a5f' }}>{teacher.user.name}</div>
+                            <div style={{ fontSize: '0.9rem', color: darkMode ? '#94a3b8' : '#64748b' }}>
+                              {teacher.user.university} • {teacher.user.trustScore} trust
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: '0.9rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.9rem', color: darkMode ? '#cbd5e1' : '#475569' }}>
+                            Rating {teacher.avgRating ?? '4.8'} ⭐
+                          </span>
+                          <span style={{ fontSize: '0.9rem', color: darkMode ? '#cbd5e1' : '#475569' }}>
+                            Match score {teacher.matchScore}
+                          </span>
+                        </div>
+                      </div>
+                      <button type="button" style={{
+                        padding: '0.95rem 1.25rem',
+                        borderRadius: '14px',
+                        border: 'none',
+                        backgroundColor: '#d4a843',
+                        color: '#1e3a5f',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}>
+                        Preview Profile
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </section>
 

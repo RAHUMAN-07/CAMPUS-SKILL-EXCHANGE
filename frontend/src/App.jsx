@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BiSearch, 
   BiBookOpen, 
@@ -11,19 +11,26 @@ import {
   BiSun 
 } from 'react-icons/bi';
 import Partners from './pages/Partners';
+import api from './services/api';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(null);
+  const [connectingSkill, setConnectingSkill] = useState(null);
+  const [connectionRequest, setConnectionRequest] = useState({ topic: '', scheduledAt: '', durationMinutes: 60, message: '' });
+  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [skills, setSkills] = useState([]);
+  const [skillLoading, setSkillLoading] = useState(false);
+  const [matchedTeachers, setMatchedTeachers] = useState([]);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [user, setUser] = useState(null);
+  const [authState, setAuthState] = useState({ email: '', password: '' });
+  const [authMessage, setAuthMessage] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
-
-  const sampleSkills = [
-    { id: 1, name: 'React & Frontend development', category: 'Software Development', provider: 'Alex Rivera', rating: 4.9, sessions: 24, tags: ['React', 'JavaScript', 'CSS'] },
-    { id: 2, name: 'Data Structures & Algorithms', category: 'Computer Science', provider: 'Samantha Chen', rating: 5.0, sessions: 38, tags: ['Python', 'DSA', 'LeetCode'] },
-    { id: 3, name: 'UI/UX Design & Prototyping', category: 'Design', provider: 'Marcus Johnson', rating: 4.8, sessions: 19, tags: ['Figma', 'UI/UX', 'Wireframing'] },
-    { id: 4, name: 'Applied Statistical Analysis', category: 'Mathematics', provider: 'Elena Rostova', rating: 4.7, sessions: 12, tags: ['R', 'Probability', 'Stats'] },
-  ];
 
   const stats = [
     { label: 'Active Students', value: '1,240+', icon: <BiGroup /> },
@@ -44,9 +51,174 @@ export default function App() {
     scrollToSection('skills-section');
   };
 
+  const fetchSkills = async (query = '') => {
+    setSkillLoading(true);
+    try {
+      const response = await api.get('/skills/search', {
+        params: { query, page: 1, limit: 12 }
+      });
+      setSkills(response.data.skills || []);
+    } catch (error) {
+      setConnectionStatus({
+        type: 'error',
+        text: error.response?.data?.error || 'Unable to load skills.'
+      });
+    } finally {
+      setSkillLoading(false);
+    }
+  };
+
+  const fetchMatchForSkill = async (skillId) => {
+    setMatchLoading(true);
+    try {
+      const response = await api.get('/match/search', {
+        params: { skillId, page: 1, limit: 10 }
+      });
+      setMatchedTeachers(response.data.results || []);
+    } catch (error) {
+      setConnectionStatus({
+        type: 'error',
+        text: error.response?.data?.error || 'Unable to load teacher matches.'
+      });
+    } finally {
+      setMatchLoading(false);
+    }
+  };
+
   const handleSkillCardClick = (skill) => {
     setSelectedSkill(skill);
+    setMatchedTeachers([]);
+    if (skill.id) {
+      fetchMatchForSkill(skill.id);
+    }
     scrollToSection('skill-detail');
+  };
+
+  const fetchRecommendations = async () => {
+    try {
+      const response = await api.get('/match/recommendations');
+      setRecommendations(response.data || []);
+    } catch (error) {
+      setConnectionStatus({
+        type: 'error',
+        text: error.response?.data?.error || 'Unable to load recommended peers.'
+      });
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await api.get('/users/me');
+      setUser(response.data);
+      await fetchRecommendations();
+    } catch (error) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchSkills();
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+      fetchCurrentUser();
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchSkills(searchQuery);
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const handleAuthChange = (event) => {
+    const { name, value } = event.target;
+    setAuthState((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleLoginSubmit = async (event) => {
+    event.preventDefault();
+    setAuthMessage(null);
+    setAuthLoading(true);
+
+    try {
+      const response = await api.post('/auth/login', authState);
+      const { user: loggedInUser, accessToken, refreshToken } = response.data;
+
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      setUser(loggedInUser);
+      setAuthMessage({ type: 'success', text: `Welcome back, ${loggedInUser.name}!` });
+      await fetchRecommendations();
+    } catch (error) {
+      setAuthMessage({
+        type: 'error',
+        text: error.response?.data?.error || 'Login failed. Check your credentials.'
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    setUser(null);
+    setRecommendations([]);
+    setAuthMessage({ type: 'success', text: 'You have been logged out.' });
+  };
+
+  const handleConnectClick = (teacher) => {
+    setConnectingSkill(teacher);
+    setConnectionStatus(null);
+    setConnectionRequest({ topic: '', scheduledAt: '', durationMinutes: 60, message: '' });
+    scrollToSection('connect-section');
+  };
+
+  const handleConnectionChange = (event) => {
+    const { name, value } = event.target;
+    setConnectionRequest((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSendConnectionRequest = async (event) => {
+    event.preventDefault();
+    if (!connectionRequest.scheduledAt) {
+      setConnectionStatus({ type: 'error', text: 'Please select a date and time for the session.' });
+      return;
+    }
+    if (!user || !connectingSkill) {
+      setConnectionStatus({ type: 'error', text: 'Please log in and choose a recommended peer first.' });
+      return;
+    }
+
+    setRequestLoading(true);
+    setConnectionStatus(null);
+
+    try {
+      await api.post('/sessions', {
+        teacherId: connectingSkill.user.id,
+        skillId: connectingSkill.skill.id,
+        scheduledAt: connectionRequest.scheduledAt,
+        durationMinutes: Number(connectionRequest.durationMinutes),
+        topic: connectionRequest.topic,
+        message: connectionRequest.message,
+      });
+      setConnectionStatus({
+        type: 'success',
+        text: `Your session request was sent to ${connectingSkill.user.name}. They can now accept or decline.`
+      });
+      setConnectingSkill(null);
+    } catch (error) {
+      setConnectionStatus({
+        type: 'error',
+        text: error.response?.data?.error || 'Unable to send the session request. Please try again.'
+      });
+    } finally {
+      setRequestLoading(false);
+    }
   };
 
   // If Partners page is selected, render it instead
@@ -348,6 +520,206 @@ export default function App() {
         </div>
       </section>
 
+      <section style={{
+        padding: '3rem 2rem',
+        backgroundColor: darkMode ? '#0b1120' : '#ffffff',
+        borderBottom: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '2rem'
+        }}>
+          <div style={{
+            padding: '2rem',
+            borderRadius: '24px',
+            backgroundColor: darkMode ? '#111827' : '#f8fafc',
+            boxShadow: darkMode ? '0 20px 45px rgba(0, 0, 0, 0.25)' : '0 20px 45px rgba(15, 23, 42, 0.08)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ fontSize: '1.9rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>Real peer connections start here</h3>
+                <p style={{ color: darkMode ? '#94a3b8' : '#475569', marginTop: '0.75rem', maxWidth: '700px' }}>
+                  Log in to see recommended peer experts matched to what you want to learn. Then send a session request directly from the dashboard.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {user ? (
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      padding: '0.85rem 1.25rem',
+                      borderRadius: '14px',
+                      border: 'none',
+                      backgroundColor: '#d4a843',
+                      color: '#1e3a5f',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Logout
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => scrollToSection('login-section')}
+                    style={{
+                      padding: '0.85rem 1.25rem',
+                      borderRadius: '14px',
+                      border: 'none',
+                      backgroundColor: '#1e3a5f',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Login to Connect
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: '1.5rem'
+          }}>
+            {!user ? (
+              <div id="login-section" style={{
+                padding: '2rem',
+                borderRadius: '24px',
+                backgroundColor: darkMode ? '#111827' : '#f8fafc',
+                boxShadow: darkMode ? '0 20px 45px rgba(0, 0, 0, 0.15)' : '0 20px 45px rgba(15, 23, 42, 0.05)'
+              }}>
+                <h4 style={{ fontSize: '1.35rem', fontWeight: 700, color: darkMode ? '#ffffff' : '#1e3a5f' }}>Login to Start a Session</h4>
+                <p style={{ color: darkMode ? '#94a3b8' : '#475569', margin: '0.75rem 0 1.5rem' }}>
+                  Use your registered email and password to access recommendations and send session requests.
+                </p>
+                <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: '1rem' }}>
+                  <input
+                    name="email"
+                    type="email"
+                    value={authState.email}
+                    onChange={handleAuthChange}
+                    placeholder="Email"
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      borderRadius: '14px',
+                      border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                      backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                      color: darkMode ? '#ffffff' : '#0f172a'
+                    }}
+                  />
+                  <input
+                    name="password"
+                    type="password"
+                    value={authState.password}
+                    onChange={handleAuthChange}
+                    placeholder="Password"
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      borderRadius: '14px',
+                      border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                      backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                      color: darkMode ? '#ffffff' : '#0f172a'
+                    }}
+                  />
+                  {authMessage && (
+                    <div style={{
+                      padding: '1rem',
+                      borderRadius: '14px',
+                      backgroundColor: authMessage.type === 'error' ? '#fee2e2' : '#d1fae5',
+                      color: authMessage.type === 'error' ? '#991b1b' : '#065f46'
+                    }}>
+                      {authMessage.text}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    style={{
+                      padding: '1rem 1.5rem',
+                      borderRadius: '14px',
+                      border: 'none',
+                      backgroundColor: '#1e3a5f',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {authLoading ? 'Signing in…' : 'Sign In'}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div style={{
+                padding: '2rem',
+                borderRadius: '24px',
+                backgroundColor: darkMode ? '#111827' : '#f8fafc',
+                boxShadow: darkMode ? '0 20px 45px rgba(0, 0, 0, 0.15)' : '0 20px 45px rgba(15, 23, 42, 0.05)'
+              }}>
+                <h4 style={{ fontSize: '1.35rem', fontWeight: 700, color: darkMode ? '#ffffff' : '#1e3a5f' }}>Recommended Peer Matches</h4>
+                <p style={{ color: darkMode ? '#94a3b8' : '#475569', margin: '0.75rem 0 1.5rem' }}>
+                  These are the best recommended peers based on your current learning interests.
+                </p>
+                {recommendations.length === 0 ? (
+                  <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>
+                    No recommendations available yet. Complete your profile or add learn skills to get better matches.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {recommendations.map((teacher) => (
+                      <div key={teacher.id} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '1.25rem',
+                        borderRadius: '18px',
+                        backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                        border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`
+                      }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', backgroundColor: '#1e3a5f', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {teacher.user.name[0]}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, color: darkMode ? '#ffffff' : '#1e3a5f' }}>{teacher.user.name}</div>
+                              <div style={{ fontSize: '0.9rem', color: darkMode ? '#94a3b8' : '#64748b' }}>{teacher.skill.name} • {teacher.skill.category.name}</div>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: '0.75rem', color: darkMode ? '#cbd5e1' : '#475569' }}>
+                            Match score: {teacher.matchScore} • Rating {teacher.avgRating ?? '4.8'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleConnectClick(teacher)}
+                          style={{
+                            padding: '0.85rem 1.25rem',
+                            borderRadius: '14px',
+                            border: 'none',
+                            backgroundColor: '#d4a843',
+                            color: '#1e3a5f',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Connect
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Featured Skills / Cards */}
       <section
         id="skills-section"
@@ -366,7 +738,7 @@ export default function App() {
         }}>
           <div>
             <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Explore Skills</h3>
-            <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.25rem' }}>Discover what fellow students are teaching on campus.</p>
+            <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.25rem' }}>Discover instructor-led skills available now for one-on-one learning sessions.</p>
           </div>
           <a
             href="#skills-section"
@@ -385,94 +757,168 @@ export default function App() {
           </a>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '2rem'
-        }}>
-          {sampleSkills
-            .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())))
-            .map((skill) => (
-              <div 
-                key={skill.id} 
-                className="glass-card"
-                onClick={() => handleSkillCardClick(skill)}
-                style={{
-                  padding: '1.75rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  backgroundColor: darkMode ? 'rgba(30, 41, 59, 0.3)' : 'rgba(255, 255, 255, 0.75)',
-                  border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(30, 58, 95, 0.08)'}`,
-                  borderRadius: '16px',
-                  boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.03)',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                  cursor: 'pointer'
-                }}
-              >
-                <div style={{
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  fontWeight: 700,
-                  color: '#d4a843',
-                  letterSpacing: '0.05em'
-                }}>
-                  {skill.category}
-                </div>
-                
-                <h4 style={{
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  lineHeight: '1.3',
-                  color: darkMode ? '#ffffff' : '#1e3a5f'
-                }}>
-                  {skill.name}
-                </h4>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.875rem'
-                }}>
-                  <div style={{
-                    width: '1.75rem',
-                    height: '1.75rem',
-                    borderRadius: '50%',
-                    backgroundColor: darkMode ? '#334155' : '#e2e8f0',
+        {skillLoading ? (
+          <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>Loading skills...</div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '2rem'
+          }}>
+            {skills.length === 0 ? (
+              <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>No skills found for this search term.</div>
+            ) : (
+              skills.map((skill) => (
+                <div 
+                  key={skill.id}
+                  onClick={() => handleSkillCardClick(skill)}
+                  style={{
+                    padding: '1.75rem',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    fontSize: '0.75rem'
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    backgroundColor: darkMode ? 'rgba(30, 41, 59, 0.3)' : 'rgba(255, 255, 255, 0.85)',
+                    border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(30, 58, 95, 0.08)'}`,
+                    borderRadius: '16px',
+                    boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.03)',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                    color: '#d4a843',
+                    letterSpacing: '0.05em'
                   }}>
-                    {skill.provider[0]}
+                    {skill.category?.name || 'General'}
                   </div>
-                  <span style={{ fontWeight: 500 }}>{skill.provider}</span>
-                </div>
 
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  fontSize: '0.85rem',
-                  color: darkMode ? '#94a3b8' : '#64748b',
-                  borderTop: `1px solid ${darkMode ? '#334155' : '#f1f5f9'}`,
-                  paddingTop: '1rem',
-                  marginTop: 'auto'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <BiStar style={{ color: '#d4a843' }} />
-                    <strong style={{ color: darkMode ? '#ffffff' : '#0f172a' }}>{skill.rating}</strong>
-                  </div>
-                  <div>
-                    {skill.sessions} sessions
+                  <h4 style={{
+                    fontSize: '1.15rem',
+                    fontWeight: 700,
+                    lineHeight: '1.3',
+                    color: darkMode ? '#ffffff' : '#1e3a5f'
+                  }}>
+                    {skill.name}
+                  </h4>
+
+                  <p style={{ color: darkMode ? '#cbd5e1' : '#475569', lineHeight: '1.7' }}>
+                    {skill._count?.userSkills ?? 0} available peer experts teaching this skill
+                  </p>
+
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    color: darkMode ? '#94a3b8' : '#64748b',
+                    borderTop: `1px solid ${darkMode ? '#334155' : '#f1f5f9'}`,
+                    paddingTop: '1rem',
+                    marginTop: 'auto'
+                  }}>
+                    <span style={{ fontSize: '0.85rem' }}>{skill._count?.userSkills} teachers</span>
+                    <span style={{ fontSize: '0.85rem' }}>{skill.category?.name}</span>
                   </div>
                 </div>
-              </div>
-            ))}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </section>
+
+      {selectedSkill && (
+        <section
+          id="skill-detail"
+          style={{
+            padding: '2rem',
+            maxWidth: '1100px',
+            margin: '0 auto',
+            borderTop: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+            backgroundColor: darkMode ? '#0f1729' : '#ffffff'
+          }}
+        >
+          <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
+            {selectedSkill.name}
+          </h3>
+          <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.5rem' }}>
+            Learn with one of the top campus peers teaching {selectedSkill.name}. Scroll to the match list and send a request to book your first session.
+          </p>
+
+          {matchLoading ? (
+            <div style={{ marginTop: '1.5rem', color: darkMode ? '#cbd5e1' : '#475569' }}>Loading teacher matches...</div>
+          ) : (
+            <div style={{
+              marginTop: '2rem',
+              display: 'grid',
+              gap: '1.5rem'
+            }}>
+              {matchedTeachers.length === 0 ? (
+                <div style={{ color: darkMode ? '#cbd5e1' : '#475569' }}>
+                  No teachers found for this skill yet. Try another skill or broaden your search.
+                </div>
+              ) : (
+                matchedTeachers.map((teacherMatch) => (
+                  <div key={teacherMatch.id} style={{
+                    padding: '1.5rem',
+                    borderRadius: '20px',
+                    border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+                    backgroundColor: darkMode ? '#111827' : '#f8fafc',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                        <div style={{
+                          width: '3rem',
+                          height: '3rem',
+                          borderRadius: '50%',
+                          backgroundColor: '#1e3a5f',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '1rem'
+                        }}>
+                          {teacherMatch.user.name[0]}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
+                            {teacherMatch.user.name}
+                          </div>
+                          <div style={{ fontSize: '0.9rem', color: darkMode ? '#94a3b8' : '#64748b' }}>
+                            {teacherMatch.user.university} • {teacherMatch.avgRating?.toFixed(1) ?? '4.8'} ⭐
+                          </div>
+                        </div>
+                      </div>
+                      <p style={{ marginTop: '0.9rem', color: darkMode ? '#cbd5e1' : '#475569', maxWidth: '720px', lineHeight: 1.7 }}>
+                        {teacherMatch.user.bio || 'Passionate peer educator with strong campus teaching experience.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleConnectClick(teacherMatch)}
+                      style={{
+                        padding: '1rem 1.35rem',
+                        borderRadius: '14px',
+                        border: 'none',
+                        backgroundColor: '#d4a843',
+                        color: '#1e3a5f',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Request Session
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {selectedSkill && (
         <section
@@ -519,6 +965,152 @@ export default function App() {
           >
             Clear Selection
           </button>
+        </section>
+      )}
+
+      {connectingSkill && (
+        <section
+          id="connect-section"
+          style={{
+            padding: '2rem',
+            maxWidth: '900px',
+            margin: '0 auto',
+            borderTop: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+            backgroundColor: darkMode ? '#111827' : '#f8fafc'
+          }}
+        >
+          <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
+            Connect with {connectingSkill.provider}
+          </h3>
+          <p style={{ color: darkMode ? '#94a3b8' : '#475569', marginTop: '0.75rem' }}>
+            Request a session for <strong>{connectingSkill.name}</strong> and set a preferred date and duration.
+          </p>
+
+          <form onSubmit={handleSendConnectionRequest} style={{
+            display: 'grid',
+            gap: '1.5rem',
+            marginTop: '1.75rem'
+          }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Session Topic</label>
+              <input
+                type="text"
+                name="topic"
+                value={connectionRequest.topic}
+                onChange={handleConnectionChange}
+                placeholder="E.g. React hooks, statistical analysis"
+                style={{
+                  width: '100%',
+                  padding: '0.9rem 1rem',
+                  borderRadius: '12px',
+                  border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                  backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                  color: darkMode ? '#ffffff' : '#0f172a'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Preferred Date & Time</label>
+                <input
+                  type="datetime-local"
+                  name="scheduledAt"
+                  value={connectionRequest.scheduledAt}
+                  onChange={handleConnectionChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.9rem 1rem',
+                    borderRadius: '12px',
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                    color: darkMode ? '#ffffff' : '#0f172a'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Duration (minutes)</label>
+                <select
+                  name="durationMinutes"
+                  value={connectionRequest.durationMinutes}
+                  onChange={handleConnectionChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.9rem 1rem',
+                    borderRadius: '12px',
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                    color: darkMode ? '#ffffff' : '#0f172a'
+                  }}
+                >
+                  <option value={30}>30</option>
+                  <option value={60}>60</option>
+                  <option value={120}>120</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Message for {connectingSkill.provider}</label>
+              <textarea
+                name="message"
+                value={connectionRequest.message}
+                onChange={handleConnectionChange}
+                rows="4"
+                placeholder="Write a short note explaining why you want this session."
+                style={{
+                  width: '100%',
+                  padding: '0.9rem 1rem',
+                  borderRadius: '12px',
+                  border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                  backgroundColor: darkMode ? '#0f1729' : '#ffffff',
+                  color: darkMode ? '#ffffff' : '#0f172a'
+                }}
+              />
+            </div>
+
+            {connectionStatus && (
+              <div style={{
+                padding: '1rem',
+                borderRadius: '12px',
+                backgroundColor: connectionStatus.type === 'error' ? '#fee2e2' : '#d1fae5',
+                color: connectionStatus.type === 'error' ? '#991b1b' : '#065f46'
+              }}>
+                {connectionStatus.text}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                type="submit"
+                style={{
+                  padding: '1rem 1.75rem',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: '#1e3a5f',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Send Session Request
+              </button>
+              <button
+                type="button"
+                onClick={() => setConnectingSkill(null)}
+                style={{
+                  padding: '1rem 1.75rem',
+                  borderRadius: '12px',
+                  border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                  backgroundColor: 'transparent',
+                  color: darkMode ? '#ffffff' : '#0f172a',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </section>
       )}
 

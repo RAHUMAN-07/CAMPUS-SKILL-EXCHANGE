@@ -1,6 +1,9 @@
 {
   "name": "campus-skill-exchange",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "private": true,
   "description": "Peer-to-peer skill exchange platform for university students",
   "scripts": {

@@ -32,25 +32,26 @@ campus-skill-exchange/
 ├── frontend/             # React Client (Vite)
 │   ├── src/
 │   │   ├── components/   # UI components
-│   │   ├── styles/       # CSS Design system (variables, glassmorphism)
-│   │   ├── App.jsx       # Main App Component
+│   │   ├── styles/       # CSS design system
+│   │   ├── App.jsx       # Main App component
 │   │   └── main.jsx      # React entry point
-│   ├── vercel.json       # Routing configurations for Vercel
+│   ├── vercel.json       # Vercel routing configs
 │   └── package.json
 │
-├── backend/              # Node.js Express Server
+├── backend/              # Node.js Express server
 │   ├── src/
-│   │   ├── config/       # Databases & Env configurations
-│   │   ├── controllers/  # API Route handlers
-│   │   ├── middleware/   # Authentication, validation, rate limiting
+│   │   ├── config/       # Env and database configs
+│   │   ├── controllers/  # API route handlers
+│   │   ├── middleware/   # Auth, validation, rate limiting
 │   │   ├── routes/       # API endpoints
 │   │   ├── services/     # Business logic
-│   │   └── socket/       # Real-time WebSockets
-│   ├── prisma/           # Database schemas and seed files
-│   ├── server.js         # Entry point
+│   │   └── socket/       # Socket.IO setup
+│   ├── prisma/           # Database schema and seed files
+│   ├── server.js         # Application entry point
 │   └── package.json
 │
-├── shared/               # Shared modules between FE/BE
+├── shared/               # Shared modules between frontend and backend
+├── .nvmrc                # Recommended project Node version
 └── docker-compose.yml    # Local PostgreSQL service
 ```
 
@@ -59,28 +60,36 @@ campus-skill-exchange/
 ## 💻 Local Setup & Installation
 
 ### 1. Prerequisites
-Ensure you have [Node.js](https://nodejs.org/) and [Docker](https://www.docker.com/) installed on your machine.
+- Install [Node.js](https://nodejs.org/).
+- Install [nvm for Windows](https://github.com/coreybutler/nvm-windows) or use the Node.js installer.
+- Install [Docker Desktop](https://www.docker.com/products/docker-desktop) if you want to run PostgreSQL locally.
 
-### 2. Clone the Repository
+### 2. Use the project Node version
+This repository includes an `.nvmrc` file with the recommended Node version.
+
+If you use `nvm`:
 ```bash
-git clone https://github.com/RAHUMAN-07/CAMPUS-SKILL-EXCHANGE.git
-cd CAMPUS-SKILL-EXCHANGE
+nvm install 20.5.1
+nvm use 20.5.1
 ```
 
-### 3. Install Dependencies
-Run the install command from the root directory:
+If you do not use `nvm`, install Node.js 20.x from the official Node.js website.
+
+### 3. Install dependencies
+From the project root:
 ```bash
+npm install
 npm run install:all
 ```
 
-### 4. Setup Database
-Start the PostgreSQL database service using Docker Compose:
+### 4. Setup database
+Start the PostgreSQL database service with Docker Compose:
 ```bash
 docker-compose up -d
 ```
 
-### 5. Run Migrations & Seed Data
-Inside the `backend` directory, apply the Prisma schema and populate the database with seed data:
+### 5. Run migrations and seed data
+From the `backend` folder:
 ```bash
 cd backend
 npx prisma migrate dev
@@ -88,13 +97,25 @@ node prisma/seed.js
 cd ..
 ```
 
-### 6. Start Development Servers
-Run the following command at the root directory to run both the frontend and backend concurrently:
+### 6. Start the app
+From the root folder:
 ```bash
 npm run dev
 ```
-- Frontend will run on: `http://localhost:5173`
-- Backend will run on: `http://localhost:3001`
+
+Then visit:
+- Frontend: `http://localhost:5173`
+- Backend health: `://localhost:3001/api/healthttph`
+
+---
+
+## 📌 Useful commands
+
+- `npm run install:all` — install root, backend, and frontend dependencies
+- `npm run dev` — start both frontend and backend concurrently
+- `npm run db:migrate` — run Prisma migrations
+- `npm run db:seed` — seed the database
+- `npm run build` — build the frontend
 
 ---
 
