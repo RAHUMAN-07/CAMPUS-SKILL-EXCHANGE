@@ -201,7 +201,7 @@ export default function App() {
       await api.post('/sessions', {
         teacherId: connectingSkill.user.id,
         skillId: connectingSkill.skill.id,
-        scheduledAt: connectionRequest.scheduledAt,
+        scheduledAt: new Date(connectionRequest.scheduledAt).toISOString(),
         durationMinutes: Number(connectionRequest.durationMinutes),
         topic: connectionRequest.topic,
         message: connectionRequest.message,
@@ -345,7 +345,7 @@ export default function App() {
             <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.025em', color: darkMode ? '#ffffff' : '#1e3a5f' }}>
               CAMPUS<span style={{ color: '#d4a843' }}>SKILL</span>
             </h1>
-            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', tracking: '0.1em', fontWeight: 600, color: darkMode ? '#94a3b8' : '#475569' }}>
+            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, color: darkMode ? '#94a3b8' : '#475569' }}>
               Exchange Network
             </p>
           </div>
@@ -844,6 +844,21 @@ export default function App() {
           <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.5rem' }}>
             Learn with one of the top campus peers teaching {selectedSkill.name}. Scroll to the match list and send a request to book your first session.
           </p>
+          {selectedSkill.tags && selectedSkill.tags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '1rem' }}>
+              {selectedSkill.tags.map((tag, idx) => (
+                <span key={idx} style={{
+                  backgroundColor: darkMode ? '#1e293b' : '#f1f5f9',
+                  color: darkMode ? '#d4d4d8' : '#0f172a',
+                  padding: '0.25rem 0.6rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.8rem'
+                }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {matchLoading ? (
             <div style={{ marginTop: '1.5rem', color: darkMode ? '#cbd5e1' : '#475569' }}>Loading teacher matches...</div>
@@ -917,54 +932,22 @@ export default function App() {
               )}
             </div>
           )}
-        </section>
-      )}
-
-      {selectedSkill && (
-        <section
-          id="skill-detail"
-          style={{
-            padding: '2rem',
-            maxWidth: '1100px',
-            margin: '0 auto',
-            borderTop: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
-            backgroundColor: darkMode ? '#0f1729' : '#ffffff'
-          }}
-        >
-          <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
-            Selected Skill Details
-          </h3>
-          <p style={{ color: darkMode ? '#94a3b8' : '#64748b', marginTop: '0.5rem' }}>
-            You selected <strong>{selectedSkill.name}</strong> from {selectedSkill.provider}. Use the skill card to explore more and connect with peers.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem' }}>
-            {selectedSkill.tags.map((tag, idx) => (
-              <span key={idx} style={{
-                backgroundColor: darkMode ? '#1e293b' : '#f1f5f9',
-                color: darkMode ? '#d4d4d8' : '#0f172a',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '9999px',
-                fontSize: '0.9rem'
-              }}>
-                {tag}
-              </span>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            <button
+              onClick={() => setSelectedSkill(null)}
+              style={{
+                backgroundColor: '#1e3a5f',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              Close Details
+            </button>
           </div>
-          <button
-            onClick={() => setSelectedSkill(null)}
-            style={{
-              marginTop: '1.75rem',
-              backgroundColor: '#1e3a5f',
-              color: '#ffffff',
-              border: 'none',
-              padding: '0.9rem 1.5rem',
-              borderRadius: '12px',
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-          >
-            Clear Selection
-          </button>
         </section>
       )}
 
@@ -980,10 +963,10 @@ export default function App() {
           }}
         >
           <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: darkMode ? '#ffffff' : '#1e3a5f' }}>
-            Connect with {connectingSkill.provider}
+            Connect with {connectingSkill.user?.name}
           </h3>
           <p style={{ color: darkMode ? '#94a3b8' : '#475569', marginTop: '0.75rem' }}>
-            Request a session for <strong>{connectingSkill.name}</strong> and set a preferred date and duration.
+            Request a session for <strong>{connectingSkill.skill?.name}</strong> and set a preferred date and duration.
           </p>
 
           <form onSubmit={handleSendConnectionRequest} style={{
@@ -1051,7 +1034,7 @@ export default function App() {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Message for {connectingSkill.provider}</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Message for {connectingSkill.user?.name}</label>
               <textarea
                 name="message"
                 value={connectionRequest.message}
@@ -1083,6 +1066,7 @@ export default function App() {
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <button
                 type="submit"
+                disabled={requestLoading}
                 style={{
                   padding: '1rem 1.75rem',
                   borderRadius: '12px',
@@ -1090,10 +1074,11 @@ export default function App() {
                   backgroundColor: '#1e3a5f',
                   color: '#ffffff',
                   fontWeight: 700,
-                  cursor: 'pointer'
+                  cursor: requestLoading ? 'not-allowed' : 'pointer',
+                  opacity: requestLoading ? 0.7 : 1
                 }}
               >
-                Send Session Request
+                {requestLoading ? 'Sending Request...' : 'Send Session Request'}
               </button>
               <button
                 type="button"

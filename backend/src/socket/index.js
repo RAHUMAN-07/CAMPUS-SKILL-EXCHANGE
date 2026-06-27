@@ -8,7 +8,11 @@ import env from '../config/env.js';
 export function setupSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: env.FRONTEND_URL,
+      origin: [
+        env.FRONTEND_URL,
+        'https://campus-skill-exchange-nnf450ghg-rahuman1.vercel.app',
+        'http://localhost:5173'
+      ],
       methods: ['GET', 'POST'],
     },
   });

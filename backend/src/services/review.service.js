@@ -64,6 +64,9 @@ export async function createReview(reviewerId, { sessionId, overallRating, comme
  * Get reviews for a user
  */
 export async function getUserReviews(userId, { page = 1, limit = 20 }) {
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 20;
+
   const now = new Date();
   const where = {
     revieweeId: userId,
@@ -81,15 +84,15 @@ export async function getUserReviews(userId, { page = 1, limit = 20 }) {
         session: { include: { skill: { include: { category: true } } } },
       },
       orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
     }),
     prisma.review.count({ where }),
   ]);
 
   return {
     reviews,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
   };
 }
 

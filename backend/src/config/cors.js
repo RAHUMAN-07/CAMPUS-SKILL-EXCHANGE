@@ -4,6 +4,7 @@ const allowedOrigins = [
   env.FRONTEND_URL,
   'http://localhost:5173',
   'https://campus-skill-exchange-one.vercel.app',
+  'https://campus-skill-exchange-nnf450ghg-rahuman1.vercel.app',
 ];
 
 export const corsOptions = {

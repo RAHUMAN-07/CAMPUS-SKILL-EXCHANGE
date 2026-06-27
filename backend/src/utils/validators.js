@@ -50,13 +50,17 @@ export const createUserSkillSchema = z.object({
   type: z.enum(['TEACH', 'LEARN']),
   proficiencyLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'EXPERT']),
   description: z.string().max(500).optional(),
-  preferredDuration: z.enum([30, 60, 120]).optional().default(60),
+  preferredDuration: z.coerce.number().refine(val => [30, 60, 120].includes(val), {
+    message: 'Duration must be 30, 60, or 120 minutes',
+  }).optional().default(60),
 });
 
 export const updateUserSkillSchema = z.object({
   proficiencyLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'EXPERT']).optional(),
   description: z.string().max(500).optional(),
-  preferredDuration: z.enum([30, 60, 120]).optional(),
+  preferredDuration: z.coerce.number().refine(val => [30, 60, 120].includes(val), {
+    message: 'Duration must be 30, 60, or 120 minutes',
+  }).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -105,4 +109,11 @@ export const searchMatchSchema = z.object({
   level: z.enum(['BEGINNER', 'INTERMEDIATE', 'EXPERT']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(20).default(10),
+});
+
+export const getUserSessionsSchema = z.object({
+  status: z.enum(['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DISPUTED']).optional(),
+  role: z.enum(['teacher', 'student']).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(20),
 });
