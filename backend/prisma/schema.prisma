@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -40,7 +40,7 @@ enum UserRole {
 // ─── MODELS ────────────────────────────────────────────
 
 model User {
-  id                String   @id @default(uuid()) @db.Uuid
+  id                String   @id @default(uuid()) 
   email             String   @unique
   passwordHash      String   @map("password_hash")
   name              String
@@ -48,7 +48,7 @@ model User {
   bio               String?  @default("")
   profilePhotoUrl   String?  @map("profile_photo_url")
   location          String?
-  availability      Json?    @default("{}")
+  availability      String?    @default("{}")
   phone             String?
   emailVerified     Boolean  @default(false) @map("email_verified")
   phoneVerified     Boolean  @default(false) @map("phone_verified")
@@ -70,6 +70,12 @@ model User {
   userBadges        UserBadge[]
   notifications     Notification[]
   refreshTokens     RefreshToken[]
+  transactions      Transaction[]
+  conversations1    Conversation[]  @relation("ConversationsUser1")
+  conversations2    Conversation[]  @relation("ConversationsUser2")
+  messages          Message[]
+  posts             Post[]
+  comments          Comment[]
 
   @@map("users")
 }
@@ -92,7 +98,7 @@ model Skill {
   name         String
   categoryId   Int      @map("category_id")
   description  String?  @default("")
-  tags         String[] @default([])
+  tags         String @default("")
   listingCount Int      @default(0) @map("listing_count")
   isTrending   Boolean  @default(false) @map("is_trending")
 
@@ -106,8 +112,8 @@ model Skill {
 }
 
 model UserSkill {
-  id                String           @id @default(uuid()) @db.Uuid
-  userId            String           @map("user_id") @db.Uuid
+  id                String           @id @default(uuid()) 
+  userId            String           @map("user_id") 
   skillId           Int              @map("skill_id")
   proficiencyLevel  ProficiencyLevel @default(BEGINNER) @map("proficiency_level")
   description       String?          @default("")
@@ -130,11 +136,11 @@ model UserSkill {
 }
 
 model Session {
-  id                String        @id @default(uuid()) @db.Uuid
-  teacherId         String        @map("teacher_id") @db.Uuid
-  studentId         String        @map("student_id") @db.Uuid
+  id                String        @id @default(uuid()) 
+  teacherId         String        @map("teacher_id") 
+  studentId         String        @map("student_id") 
   skillId           Int           @map("skill_id")
-  userSkillId       String?       @map("user_skill_id") @db.Uuid
+  userSkillId       String?       @map("user_skill_id") 
   status            SessionStatus @default(PENDING)
   scheduledAt       DateTime      @map("scheduled_at")
   durationMinutes   Int           @map("duration_minutes")
@@ -160,10 +166,10 @@ model Session {
 }
 
 model Review {
-  id              String    @id @default(uuid()) @db.Uuid
-  sessionId       String    @map("session_id") @db.Uuid
-  reviewerId      String    @map("reviewer_id") @db.Uuid
-  revieweeId      String    @map("reviewee_id") @db.Uuid
+  id              String    @id @default(uuid()) 
+  sessionId       String    @map("session_id") 
+  reviewerId      String    @map("reviewer_id") 
+  revieweeId      String    @map("reviewee_id") 
   overallRating   Int       @map("overall_rating")
   comment         String?
   isPublic        Boolean   @default(false) @map("is_public")
@@ -183,12 +189,12 @@ model Review {
 }
 
 model TrustHistory {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
+  id            String   @id @default(uuid()) 
+  userId        String   @map("user_id") 
   scoreChange   Float    @map("score_change")
   newScore      Float    @map("new_score")
   reason        String
-  referenceId   String?  @map("reference_id") @db.Uuid
+  referenceId   String?  @map("reference_id") 
 
   createdAt     DateTime @default(now()) @map("created_at")
 
@@ -204,7 +210,7 @@ model Badge {
   description String
   icon        String
   category    String
-  criteria    Json?
+  criteria    String?
 
   // Relations
   userBadges  UserBadge[]
@@ -213,8 +219,8 @@ model Badge {
 }
 
 model UserBadge {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id        String   @id @default(uuid()) 
+  userId    String   @map("user_id") 
   badgeId   Int      @map("badge_id")
   earnedAt  DateTime @default(now()) @map("earned_at")
 
@@ -227,12 +233,12 @@ model UserBadge {
 }
 
 model Notification {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id        String   @id @default(uuid()) 
+  userId    String   @map("user_id") 
   type      String
   title     String
   message   String
-  data      Json?
+  data      String?
   isRead    Boolean  @default(false) @map("is_read")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -244,8 +250,8 @@ model Notification {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id        String   @id @default(uuid()) 
+  userId    String   @map("user_id") 
   tokenHash String   @unique @map("token_hash")
   expiresAt DateTime @map("expires_at")
   isRevoked Boolean  @default(false) @map("is_revoked")
@@ -256,4 +262,91 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+// ─── NEW PLATFORM MODELS ────────────────────────────────────────────
+
+model Transaction {
+  id          String   @id @default(uuid()) 
+  userId      String   @map("user_id") 
+  amount      Int      // positive for earning, negative for spending
+  type        String   // e.g., 'SESSION_EARN', 'SESSION_SPEND', 'BONUS'
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model Conversation {
+  id        String   @id @default(uuid()) 
+  user1Id   String   @map("user1_id") 
+  user2Id   String   @map("user2_id") 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user1     User       @relation("ConversationsUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User       @relation("ConversationsUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@unique([user1Id, user2Id])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid()) 
+  conversationId String       @map("conversation_id") 
+  senderId       String       @map("sender_id") 
+  content        String
+  isRead         Boolean      @default(false) @map("is_read")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Community {
+  id          String   @id @default(uuid()) 
+  name        String   @unique
+  description String
+  icon        String   @default("👥")
+  memberCount Int      @default(0) @map("member_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  posts       Post[]
+
+  @@map("communities")
+}
+
+model Post {
+  id          String    @id @default(uuid()) 
+  communityId String    @map("community_id") 
+  authorId    String    @map("author_id") 
+  title       String
+  content     String
+  upvotes     Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) 
+  postId    String   @map("post_id") 
+  authorId  String   @map("author_id") 
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
 }
