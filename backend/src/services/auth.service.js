@@ -44,8 +44,12 @@ export async function register({ email, password, name, university, bio, locatio
     },
   });
 
-  // Send verification email
-  await sendVerificationEmail(email, emailVerifyToken);
+  // Send verification email (non-blocking — don't fail registration if email fails)
+  try {
+    await sendVerificationEmail(email, emailVerifyToken);
+  } catch (emailErr) {
+    console.warn('⚠️ Failed to send verification email:', emailErr.message);
+  }
 
   // Generate tokens
   const accessToken = generateAccessToken({ userId: user.id, role: 'STUDENT' });
