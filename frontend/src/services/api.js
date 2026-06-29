@@ -3,7 +3,10 @@ import axios from 'axios';
 // Get API base URL
 // - In development: uses Vite's local dev server proxy (config in vite.config.js)
 // - In production: uses VITE_API_URL environment variable from build settings (Vercel)
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const envUrl = import.meta.env.VITE_API_URL;
+const API_BASE_URL = envUrl 
+  ? (envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`) 
+  : '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
