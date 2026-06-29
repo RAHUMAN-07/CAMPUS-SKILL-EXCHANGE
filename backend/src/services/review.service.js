@@ -53,7 +53,7 @@ export async function createReview(reviewerId, { sessionId, overallRating, comme
       type: 'NEW_REVIEW',
       title: 'New Review',
       message: `You received a ${overallRating}-star review!`,
-      data: { reviewId: review.id, sessionId },
+      data: JSON.stringify({ reviewId: review.id, sessionId }),
     },
   });
 

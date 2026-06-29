@@ -52,7 +52,7 @@ export async function createSession(studentId, { teacherId, skillId, userSkillId
       type: 'SESSION_REQUEST',
       title: 'New Session Request',
       message: `${session.student.name} wants to learn ${session.skill.name} from you!`,
-      data: { sessionId: session.id },
+      data: JSON.stringify({ sessionId: session.id }),
     },
   });
 
@@ -158,7 +158,7 @@ export async function acceptSession(sessionId, userId) {
       type: 'SESSION_ACCEPTED',
       title: 'Session Accepted!',
       message: `${updated.teacher.name} accepted your ${updated.skill.name} session!`,
-      data: { sessionId },
+      data: JSON.stringify({ sessionId }),
     },
   });
 
@@ -187,7 +187,7 @@ export async function declineSession(sessionId, userId) {
       type: 'SESSION_DECLINED',
       title: 'Session Declined',
       message: `${updated.teacher.name} couldn't accept your ${updated.skill.name} session. Try another teacher!`,
-      data: { sessionId },
+      data: JSON.stringify({ sessionId }),
     },
   });
 
@@ -221,7 +221,7 @@ export async function cancelSession(sessionId, userId, reason) {
       type: 'SESSION_CANCELLED',
       title: 'Session Cancelled',
       message: 'A session has been cancelled.',
-      data: { sessionId },
+      data: JSON.stringify({ sessionId }),
     },
   });
 
@@ -281,7 +281,7 @@ export async function confirmSession(sessionId, userId) {
       type: 'SESSION_COMPLETED',
       title: 'Session Completed! 🎉',
       message: `Your ${updated.skill.name} session is complete. Leave a review!`,
-      data: { sessionId },
+      data: JSON.stringify({ sessionId }),
     };
     await prisma.notification.createMany({
       data: [

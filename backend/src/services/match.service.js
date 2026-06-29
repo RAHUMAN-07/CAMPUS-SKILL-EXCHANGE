@@ -5,73 +5,94 @@ import prisma from '../config/database.js';
  * Phase 1: rank by rating + session count
  * Phase 2: weighted multi-factor scoring
  */
-export async function searchTeachers({ skillId, level, page = 1, limit = 10 }) {
-  const where = {
-    skillId,
-    type: 'TEACH',
-    isActive: true,
-  };
-  if (level) where.proficiencyLevel = level;
+export async function searchTeachers({ skillId, skill, category, level, page = 1, limit = 10 }) {
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 10;
 
-  const [results, total] = await Promise.all([
-    prisma.userSkill.findMany({
+  const where = {
+    role: 'STUDENT',
+    userSkills: {
+      some: {
+        type: 'TEACH',
+        isActive: true,
+        ...(skillId ? { skillId: parseInt(skillId, 10) } : {}),
+        ...(skill ? {
+          skill: {
+            name: { contains: skill, mode: 'insensitive' }
+          }
+        } : {}),
+        ...(category ? {
+          skill: {
+            category: {
+              name: { contains: category, mode: 'insensitive' }
+            }
+          }
+        } : {}),
+        ...(level ? { proficiencyLevel: level } : {}),
+      }
+    }
+  };
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
       where,
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            university: true,
-            bio: true,
-            profilePhotoUrl: true,
-            location: true,
-            availability: true,
-            trustScore: true,
-            totalPoints: true,
-            _count: {
-              select: {
-                teachingSessions: { where: { status: 'COMPLETED' } },
-                reviewsReceived: true,
-              },
-            },
-          },
+        userSkills: {
+          where: { type: 'TEACH', isActive: true },
+          include: { skill: { include: { category: true } } }
         },
-        skill: { include: { category: true } },
+        teachingSessions: {
+          where: { status: 'COMPLETED' },
+          select: { id: true }
+        }
       },
-      orderBy: [
-        { avgRating: 'desc' },
-        { sessionCount: 'desc' },
-      ],
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
     }),
-    prisma.userSkill.count({ where }),
+    prisma.user.count({ where }),
   ]);
 
-  // Compute a basic match score for Phase 1
-  const maxRating = 5;
-  const maxTrust = 100;
+  const formatted = users.map(u => {
+    const teachSkills = u.userSkills || [];
+    const ratings = teachSkills.filter(s => s.avgRating > 0).map(s => s.avgRating);
+    const avgRating = ratings.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length) : 0;
+    const totalSessions = u.teachingSessions.length;
 
-  const ranked = results.map(r => {
-    const ratingScore = (r.avgRating / maxRating) * 40;
-    const trustScore = (r.user.trustScore / maxTrust) * 30;
-    const experienceScore = Math.min(r.sessionCount / 20, 1) * 20;
-    const hasAvailability = r.user.availability && Object.keys(r.user.availability).length > 0 ? 10 : 0;
-
-    const matchScore = Math.round(ratingScore + trustScore + experienceScore + hasAvailability);
+    // Calculate matchScore
+    const maxTrust = 100;
+    const ratingScore = (avgRating / 5) * 40;
+    const trustScore = (u.trustScore / maxTrust) * 30;
+    const experienceScore = Math.min(totalSessions / 20, 1) * 20;
+    let parsedAvailability = {};
+    try {
+      if (u.availability) {
+        parsedAvailability = typeof u.availability === 'string' ? JSON.parse(u.availability) : u.availability;
+      }
+    } catch {}
+    const hasAvailability = parsedAvailability && Object.keys(parsedAvailability).length > 0 ? 10 : 0;
+    const matchScore = Math.min(Math.round(ratingScore + trustScore + experienceScore + hasAvailability), 100);
 
     return {
-      ...r,
-      matchScore: Math.min(matchScore, 100),
+      id: u.id,
+      name: u.name,
+      university: u.university,
+      bio: u.bio,
+      profilePhotoUrl: u.profilePhotoUrl,
+      trustScore: u.trustScore,
+      teachSkills,
+      avgRating,
+      totalSessions,
+      matchScore,
     };
   });
 
   // Sort by match score
-  ranked.sort((a, b) => b.matchScore - a.matchScore);
+  formatted.sort((a, b) => b.matchScore - a.matchScore);
 
   return {
-    results: ranked,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    results: formatted,
+    teachers: formatted,
+    pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
   };
 }
 

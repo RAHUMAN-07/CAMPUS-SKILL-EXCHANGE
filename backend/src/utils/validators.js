@@ -105,7 +105,9 @@ export const searchSkillsSchema = z.object({
 });
 
 export const searchMatchSchema = z.object({
-  skillId: z.coerce.number().int().positive(),
+  skillId: z.coerce.number().int().positive().optional(),
+  skill: z.string().optional(),
+  category: z.string().optional(),
   level: z.enum(['BEGINNER', 'INTERMEDIATE', 'EXPERT']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(20).default(10),

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   BiSun, BiMoon, BiSearch, BiUser, BiBookOpen,
   BiMessageSquareDetail, BiGroup, BiHomeAlt,
-  BiBell, BiMenu, BiX, BiLogOut, BiDashboard,
+  BiBell, BiMenu, BiX, BiLogOut, BiGridAlt,
   BiBarChart
 } from 'react-icons/bi';
 import api from '../services/api';
@@ -57,7 +57,7 @@ export default function Layout({ children, theme, toggleTheme }) {
   ];
 
   const authLinks = [
-    { path: '/dashboard', label: 'Dashboard', icon: <BiDashboard size={18} /> },
+    { path: '/dashboard', label: 'Dashboard', icon: <BiGridAlt size={18} /> },
     { path: '/bookings', label: 'Requests', icon: <BiBarChart size={18} /> },
     { path: '/messages', label: 'Messages', icon: <BiMessageSquareDetail size={18} /> },
     { path: '/profile', label: 'Profile', icon: <BiUser size={18} /> },
