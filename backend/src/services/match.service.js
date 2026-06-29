@@ -20,10 +20,10 @@ export async function searchTeachers({ skillId, skill, category, level, page = 1
         // Merge skill.name + skill.category into a single `skill:` block
         ...((skill || category) ? {
           skill: {
-            ...(skill ? { name: { contains: skill } } : {}),
+            ...(skill ? { name: { contains: skill, mode: 'insensitive' } } : {}),
             ...(category ? {
               category: {
-                name: { contains: category }
+                name: { contains: category, mode: 'insensitive' }
               }
             } : {}),
           }

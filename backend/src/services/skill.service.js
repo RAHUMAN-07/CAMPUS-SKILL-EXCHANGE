@@ -18,8 +18,8 @@ export async function searchSkills({ query, categoryId, trending, page = 1, limi
 
   if (query) {
     where.OR = [
-      { name: { contains: query } },
-      { tags: { contains: query.toLowerCase() } },
+      { name: { contains: query, mode: 'insensitive' } },
+      { tags: { contains: query.toLowerCase(), mode: 'insensitive' } },
     ];
   }
   if (categoryId) where.categoryId = categoryId;
