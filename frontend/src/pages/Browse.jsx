@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 
-const CATEGORIES = ['All', 'Programming', 'Languages', 'Design', 'Data Science', 'Music', 'Mathematics', 'Business', 'Science'];
+const CATEGORIES = ['All', 'Programming', 'Design', 'Languages', 'Music', 'Mathematics', 'Science', 'Business', 'Data & AI', 'Writing', 'Photography & Video', 'Health & Fitness', 'Life Skills'];
+
 
 function SkeletonCard() {
   return (

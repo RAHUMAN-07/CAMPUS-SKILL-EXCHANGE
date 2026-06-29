@@ -16,19 +16,18 @@ export async function searchTeachers({ skillId, skill, category, level, page = 1
         type: 'TEACH',
         isActive: true,
         ...(skillId ? { skillId: parseInt(skillId, 10) } : {}),
-        ...(skill ? {
-          skill: {
-            name: { contains: skill, mode: 'insensitive' }
-          }
-        } : {}),
-        ...(category ? {
-          skill: {
-            category: {
-              name: { contains: category, mode: 'insensitive' }
-            }
-          }
-        } : {}),
         ...(level ? { proficiencyLevel: level } : {}),
+        // Merge skill.name + skill.category into a single `skill:` block
+        ...((skill || category) ? {
+          skill: {
+            ...(skill ? { name: { contains: skill } } : {}),
+            ...(category ? {
+              category: {
+                name: { contains: category }
+              }
+            } : {}),
+          }
+        } : {}),
       }
     }
   };

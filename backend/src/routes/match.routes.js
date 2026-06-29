@@ -6,7 +6,7 @@ import { searchMatchSchema } from '../utils/validators.js';
 
 const router = Router();
 
-router.get('/search', authenticate, validate(searchMatchSchema, 'query'), matchCtrl.searchTeachers);
+router.get('/search', validate(searchMatchSchema, 'query'), matchCtrl.searchTeachers);
 router.get('/recommendations', authenticate, matchCtrl.getRecommendations);
 
 export default router;

@@ -199,7 +199,7 @@ async function main() {
       await prisma.skill.upsert({
         where: { name_categoryId: { name: skillName, categoryId: category.id } },
         update: {},
-        create: { name: skillName, categoryId: category.id, description: '', tags: [cat.name.toLowerCase()] },
+        create: { name: skillName, categoryId: category.id, description: '', tags: JSON.stringify([cat.name.toLowerCase()]) },
       });
     }
   }
@@ -222,7 +222,7 @@ async function main() {
         university: user.university,
         bio: user.bio,
         location: user.location,
-        availability: user.availability,
+        availability: user.availability ? JSON.stringify(user.availability) : null,
         trustScore: user.trustScore,
         totalPoints: user.totalPoints,
         emailVerified: user.emailVerified,
@@ -281,7 +281,10 @@ async function main() {
     await prisma.badge.upsert({
       where: { name: badge.name },
       update: {},
-      create: badge,
+      create: {
+        ...badge,
+        criteria: badge.criteria ? JSON.stringify(badge.criteria) : null,
+      },
     });
   }
   console.log(`   ✅ ${BADGES.length} badges\n`);
