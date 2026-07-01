@@ -107,9 +107,24 @@ export async function getTrendingSkills() {
 /**
  * Add a skill to user profile
  */
-export async function addUserSkill(userId, { skillId, type, proficiencyLevel, description, preferredDuration }) {
+export async function addUserSkill(userId, { skillId, skillName, type, proficiencyLevel, description, preferredDuration }) {
+  let resolvedSkillId = skillId;
+
+  if (!resolvedSkillId && skillName) {
+    const matchedSkill = await prisma.skill.findFirst({
+      where: { name: { equals: skillName.trim(), mode: 'insensitive' } }
+    });
+
+    if (!matchedSkill) {
+      const error = new Error(`Skill "${skillName}" was not found in our catalog. Try "Python", "React.js", "Figma", "Guitar", or "Spanish".`);
+      error.statusCode = 404;
+      throw error;
+    }
+    resolvedSkillId = matchedSkill.id;
+  }
+
   // Verify skill exists
-  const skill = await prisma.skill.findUnique({ where: { id: skillId } });
+  const skill = await prisma.skill.findUnique({ where: { id: resolvedSkillId } });
   if (!skill) {
     const error = new Error('Skill not found');
     error.statusCode = 404;
@@ -119,7 +134,7 @@ export async function addUserSkill(userId, { skillId, type, proficiencyLevel, de
   const userSkill = await prisma.userSkill.create({
     data: {
       userId,
-      skillId,
+      skillId: resolvedSkillId,
       type,
       proficiencyLevel,
       description: description || '',
@@ -130,13 +145,12 @@ export async function addUserSkill(userId, { skillId, type, proficiencyLevel, de
 
   // Update listing count
   await prisma.skill.update({
-    where: { id: skillId },
+    where: { id: resolvedSkillId },
     data: { listingCount: { increment: 1 } },
   });
 
   return userSkill;
 }
-
 /**
  * Get current user's skills
  */
