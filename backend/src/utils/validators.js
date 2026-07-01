@@ -46,13 +46,17 @@ export const updateProfileSchema = z.object({
 // ─── SKILL SCHEMAS ────────────────────────────────────
 
 export const createUserSkillSchema = z.object({
-  skillId: z.number().int().positive(),
+  skillId: z.number().int().positive().optional(),
+  skillName: z.string().min(1).optional(),
   type: z.enum(['TEACH', 'LEARN']),
   proficiencyLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'EXPERT']),
   description: z.string().max(500).optional(),
   preferredDuration: z.coerce.number().refine(val => [30, 60, 120].includes(val), {
     message: 'Duration must be 30, 60, or 120 minutes',
   }).optional().default(60),
+}).refine(data => data.skillId !== undefined || data.skillName !== undefined, {
+  message: "Either skillId or skillName must be provided",
+  path: ["skillId"],
 });
 
 export const updateUserSkillSchema = z.object({
