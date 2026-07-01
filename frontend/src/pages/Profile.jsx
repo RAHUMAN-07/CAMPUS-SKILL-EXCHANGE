@@ -57,7 +57,7 @@ export default function Profile() {
     }
   };
 
-  const handleAddSkill = async (type) => {
+    const handleAddSkill = async (type) => {
     if (!newSkill.skillName.trim()) return;
     try {
       await api.post('/skills/user-skills', {
@@ -69,8 +69,11 @@ export default function Profile() {
       setShowAddSkill(null);
       setNewSkill({ skillName: '', proficiencyLevel: 'BEGINNER', description: '' });
       fetchProfile(); // Refresh
+      setError('');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add skill');
+      const details = err.response?.data?.details;
+      const firstDetailMsg = details && details.length > 0 ? details[0].message : null;
+      setError(firstDetailMsg || err.response?.data?.error || 'Failed to add skill');
     }
   };
 
